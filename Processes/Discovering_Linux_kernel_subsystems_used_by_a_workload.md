@@ -1,5 +1,5 @@
 ## Discovering Linux kernel subsystems used by a workload
-#### Authors: 
+#### Authors:
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**Shuah Khan <<skhan@linuxfoundation.org>> <br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Shefali Sharma <<sshefali021@gmail.com>>**
 
@@ -9,9 +9,9 @@
 - Performance and security of the operating system can be analyzed with the help of tools like perf, stress-ng, paxtest.
 - Once we discover and understand the workload needs, we can focus on them to avoid regressions and use it to evaluate safety considerations.
 
-In our previous blog [Discovery Linux Kernel Subsystems used by OpenAPS](https://elisa.tech/blog/2022/02/02/discovery-linux-kernel-subsystems-used-by-openaps/), we gathered a higher level of information about the OpenAPS usage. It isn’t ideal that this higher information doesn’t tell us the system usage by individual OpenAPS commands. As an example, we won’t be able to clearly identify which system calls are invoked when a user queries insulin pump status.
+In our previous blog [Discovering Linux Kernel Subsystems used by OpenAPS](https://elisa.tech/blog/2022/02/02/discovery-linux-kernel-subsystems-used-by-openaps/), we gathered a higher level of information about the OpenAPS usage. It isn't ideal that this higher information doesn't tell us the system usage by individual OpenAPS commands. As an example, we won't be able to clearly identify which system calls are invoked when a user queries insulin pump status.
 
-Continuing on our work, we identified a process for gathering fine grained information about system resources necessary to run a workload on Linux. This process can then be applied to any workload including individual OpenAPS commands and important use-cases. As an example, what subsystems are used when a user queries the insulin pump status. 
+Continuing on our work, we identified a process for gathering fine grained information about system resources necessary to run a workload on Linux. This process can then be applied to any workload including individual OpenAPS commands and important use-cases. As an example, what subsystems are used when a user queries the insulin pump status.
 
 We chose an easily available [strace](https://man7.org/linux/man-pages/man1/strace.1.html) which is a useful diagnostic, instructional, and debugging tool and can be used to discover the system resources in use by a workload. Once we discover and understand the workload needs, we can focus on them to avoid regressions and use it to evaluate safety considerations.
 
@@ -26,14 +26,14 @@ We used the strace command to trace the perf,  stress-ng, paxtest workloads. Sys
 Before we can get started we will have to get our system ready. We assume that you have a Linux distro running on a physical system or virtual machine. Most distributions will include **strace command**. Let’s install other tools that aren’t usually included to build Linux kernel. Please note that the following works on Debian based distributions. You might have to find equivalent packages on other Linux distributions.
 
 - **Install tools to build Linux kernel and tools in kernel repo.**
-  - `sudo apt-get build-essentials flex bison yacc`
+  - `sudo apt-get install build-essential flex bison yacc`
   - `sudo apt install libelf-dev systemtap-sdt-dev libaudit-dev libslang2-dev libperl-dev libdw-dev`
 - **Browsing kernel sources**
   - `sudo apt-get install cscope`
 - **Install stress-ng**
-  - `apt-get install stress-ng`
+  - `sudo apt-get install stress-ng`
 - **Install paxtest**
-  - `apt-get install paxtest`
+  - `sudo apt-get install paxtest`
 
 We plan to use strace to trace perf bench, stress-ng and paxtest workloads to show you how to analyze a workload and identify Linux subsystems used by these workloads. We hope you will be able to apply this process to trace your workload(s).
 
@@ -79,12 +79,12 @@ First let’s checkout the latest Linux repository and build cscope database:
 - `git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git linux`
 - `cd linux`
 - `cscope -R -p10` or `cscope -d -p10`
-  
+
 Note: Run **cscope -R** to build the database (run it only once) and **cscope -d -p10** to enter into the interactive mode of cscope. To get out of this mode press **ctrl+d**.
 
 ![cscope -R output](Discovering_Linux_kernel_subsystems_used_by_a_workload_images/cscope-R.png)
 
-All the system calls are defined in the kernel using the SYSCALL_DEFINE[0-6] macro in their respective subsystem directory. We can search for this egrep pattern to find all the system calls and their subsystems (Press the Tab key to go back to the cscope options). 
+All the system calls are defined in the kernel using the SYSCALL_DEFINE[0-6] macro in their respective subsystem directory. We can search for this egrep pattern to find all the system calls and their subsystems (Press the Tab key to go back to the cscope options).
 
 ![system call subsystem info](Discovering_Linux_kernel_subsystems_used_by_a_workload_images/egrep-pattern.png)
 
@@ -100,7 +100,7 @@ If you haven't already checkout the Linux mainline repository, you can do so and
 - `make`
 
 **Note:** The perf command can be built without building the kernel in the repo and can be run on older kernels. However matching the kernel and perf revisions gives more accurate information on the subsystem usage.
-  
+
 The following image shows the “make perf” output:
 
 ![make perf output](Discovering_Linux_kernel_subsystems_used_by_a_workload_images/perf-make.png)
@@ -127,7 +127,7 @@ The **perf bench** command contains multiple multithreaded microkernel benchmark
 
 Now let’s run it under strace to see which system calls it is making:
 - `strace -c ./perf bench all`
-  
+
 ![strace perf bench all output](Discovering_Linux_kernel_subsystems_used_by_a_workload_images/strace-perf-bench-all.png)
 
 ##### System Calls made by the workload:
@@ -135,7 +135,7 @@ The following table shows you the system calls, frequency and the Linux subsyste
 
 | System Call | Frequency | Linux Subsystem | System Call Entry Point (API) |
 | - | - | - | - |
-| getppid | 10000001 | Process Mgmt | [sys_getpid()](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/syscalls.h) |
+| getppid | 10000001 | Process Mgmt | [sys_getppid()](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/syscalls.h) |
 | clone | 1077 | Process Mgmt. | [sys_clone()](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/syscalls.h) |
 | prctl | 23 | Process Mgmt. | [sys_prctl()](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/syscalls.h) |
 | prlimit64 | 7 | Process Mgmt. | [sys_prlimit64()](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/syscalls.h) |
@@ -151,7 +151,7 @@ The following table shows you the system calls, frequency and the Linux subsyste
 | read | 1392702 | Filesystem | [sys_read()](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/syscalls.h) |
 | close | 49951 | Filesystem | [sys_close()](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/syscalls.h) |
 | pipe | 604 | Filesystem | [sys_pipe()](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/syscalls.h) |
-| openat | 48560 | Filesystem | [sys_opennat()](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/syscalls.h) |
+| openat | 48560 | Filesystem | [sys_openat()](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/syscalls.h) |
 | fstat | 8338 | Filesystem | [sys_fstat()](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/syscalls.h) |
 | stat | 1573 | Filesystem | [sys_stat()](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/syscalls.h) |
 | pread64 | 9646 | Filesystem | [sys_pread64()](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/syscalls.h) |
@@ -197,13 +197,13 @@ Running the netdev stressor (It starts N  workers  that  exercise  various  netd
 
 We can use the perf record command to record the events and information associated with a process. This command records the profiling data in the perf.data file in the same directory. Lets record the events associated with the netdev stressor using the `./perf record stress-ng --netdev 1 -t 60 --metrics` command.
 
-![perf record stress-ng ntdev output](Discovering_Linux_kernel_subsystems_used_by_a_workload_images/perf-record-netdev.png)
+![perf record stress-ng netdev output](Discovering_Linux_kernel_subsystems_used_by_a_workload_images/perf-record-netdev.png)
 
-To view the final report use the perf report command. This command helps us to read the perf.data file. The following image shows the output of the `./perf report` command and the events associated with the netdev stressor. 
+To view the final report use the perf report command. This command helps us to read the perf.data file. The following image shows the output of the `./perf report` command and the events associated with the netdev stressor.
 
 ![perf report for netdev events](Discovering_Linux_kernel_subsystems_used_by_a_workload_images/perf-report-netdev-events.png)
 
-We can also use perf annotate to see the statistics of each instruction of the program. The following image shows the output of the `./perf annotate` command. 
+We can also use perf annotate to see the statistics of each instruction of the program. The following image shows the output of the `./perf annotate` command.
 
 ![perf annotate output](Discovering_Linux_kernel_subsystems_used_by_a_workload_images/perf-annotate.png)
 
@@ -265,7 +265,7 @@ Running paxtest under the kiddie mode - `paxtest kiddie`
 
 ![paxtest under kiddie mode](Discovering_Linux_kernel_subsystems_used_by_a_workload_images/paxtest-kiddie.png)
 
-Collecting CPU stack traces for the paxtest kiddie command to see which function is calling other functions in the performance profile, using the DWARF method to unwind the stack. The following image shows the output of `./perf record --call-graph dwarf paxtest kiddie` command. 
+Collecting CPU stack traces for the paxtest kiddie command to see which function is calling other functions in the performance profile, using the DWARF method to unwind the stack. The following image shows the output of `./perf record --call-graph dwarf paxtest kiddie` command.
 
 ![perf record paxtest kiddie](Discovering_Linux_kernel_subsystems_used_by_a_workload_images/perf-record-paxtest.png)
 
@@ -326,15 +326,3 @@ This document is released under the Creative Commons Attribution 4.0 Internation
 To the extent possible, in no event will the Licensor be liable to You on any legal theory (including, without limitation, negligence) or otherwise for any direct, special, indirect, incidental, consequential, punitive, exemplary, or other losses, costs, expenses, or damages arising out of this Public License or use of the Licensed Material, even if the Licensor has been advised of the possibility of such losses, costs, expenses, or damages. Where a limitation of liability is not allowed in full or in part, this limitation may not apply to You.
 
 The disclaimer of warranties and limitation of liability provided above shall be interpreted in a manner that, to the extent possible, most closely approximates an absolute disclaimer and waiver of all liability.
-
-
-
-
-
-
-
-
-
- 
-
-
